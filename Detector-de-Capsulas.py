@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 
 #Asignación de variables globales
 path = "/home/pi/Desktop/Tesis/Resources/VideoYFotogramas/Vid_10_1.jpg"#"/home/pi/Desktop/Tesis/Resources/Prueba7.jpg" #"/home/pi/Desktop/Tesis/Resources/Prueba1.jpg" #
@@ -41,9 +42,9 @@ def getPorcentajeCapsulas(imgParm, umbral):
 
 def getContornoMayor(contornos):
 	contornoMayor = 0
-	areaMayor = contourArea(contornos[0])
+	areaMayor = cv2.contourArea(contornos[0])
 	for contorno in contornos:
-		nuevaArea = contourArea(contorno)
+		nuevaArea = cv2.contourArea(contorno)
 		if (nuevaArea > areaMayor):
 			areaMayor = nuevaArea
 			contornoMayor = contorno
@@ -119,12 +120,18 @@ def GetHoughParameters(imgParm, imgParm1, imgParm2):
 	threshold = 80
 	maxThreshold = 256
 	auxMax = 256
-	minLineLength = imgParm.cols < imgParm.rows? imgParm.cols*0.65 : imgParm.rows * 0.65	#Se asume que el bebedero ocupará un 65% del largo o ancho de la imagen
-	maxLineGap = imgParm.cols < imgParm.rows ? imgParm.cols * 0.10 : imgParm.rows * 0.10
+	if(imgParm.cols < imgParm.rows):	#Se asume que el bebedero ocupará un 65% del largo o ancho de la imagen
+		minLineLength = imgParm.cols*0.65
+	else:
+		minLineLength = imgParm.rows * 0.65
+	if(imgParm.cols < imgParm.rows):
+		maxLineGap = imgParm.cols * 0.10
+	else:
+		maxLineGap = imgParm.rows * 0.10
 	mitadX = imgParm.cols/2
 	mitadY = imgParm.rows / 2
 
-	cv2.HoughLinesP(imgCanny, linesP, 1, cv2.CV_PI / 180, maxThreshold, minLineLength, maxLineGap)
+	linesP = cv2.HoughLinesP(imgCanny, 1, cv2.CV_PI / 180, maxThreshold, linesP, minLineLength, maxLineGap)
 
 	#Se halla el valor máximo de threshold que brinde suficientes resultados (al menos una linea cruzando dos cuadrantes, para ambos duos de cuadrantes)
 	step = 128
@@ -143,33 +150,33 @@ def GetHoughParameters(imgParm, imgParm1, imgParm2):
 	maxThreshold = auxMax
 
 	#Ejecuta el analisis con las variables definitivas
-	cv2.HoughLines(imgCanny, lines, 1, CV_PI / 180, maxThreshold, minLineLength, maxLineGap)
-	cv2.HoughLinesP(imgCanny, linesP, 1, CV_PI / 180, maxThreshold, minLineLength, maxLineGap)
+	lines = cv2.HoughLines(imgCanny, 1, cv2.CV_PI / 180, maxThreshold, lines, minLineLength, maxLineGap)
+	linesP = cv2.HoughLinesP(imgCanny, 1, cv2.CV_PI / 180, maxThreshold, linesP, minLineLength, maxLineGap)
 
 	# Draw the lines
-	cv2.line(imgParm1, Point(0,0), Point(imgParm1.cols - 1, 0), Scalar(255, 255, 255), anchoLinea, LINE_AA)
-	cv2.line(imgParm1, Point(0, 0), Point(0,imgParm1.rows - 1), Scalar(255, 255, 255), anchoLinea, LINE_AA)
-	cv2.line(imgParm1, Point(imgParm1.cols - 1, 0), Point(imgParm1.cols - 1, imgParm1.rows - 1), Scalar(255, 255, 255), anchoLinea, LINE_AA)
-	cv2.line(imgParm1, Point(0, imgParm1.rows - 1), Point(imgParm1.cols - 1, imgParm1.rows - 1), Scalar(255, 255, 255), anchoLinea, LINE_AA)
+	imgParm1 = cv2.line(imgParm1, (0,0), (imgParm1.cols - 1, 0), (255, 255, 255), anchoLinea, cv2.LINE_AA)
+	imgParm1 = cv2.line(imgParm1, (0, 0), (0,imgParm1.rows - 1), (255, 255, 255), anchoLinea, cv2.LINE_AA)
+	imgParm1 = cv2.line(imgParm1, (imgParm1.cols - 1, 0), (imgParm1.cols - 1, imgParm1.rows - 1), (255, 255, 255), anchoLinea, cv2.LINE_AA)
+	imgParm1 = cv2.line(imgParm1, (0, imgParm1.rows - 1), (imgParm1.cols - 1, imgParm1.rows - 1), (255, 255, 255), anchoLinea, cv2.LINE_AA)
 	for line in lines:
-		float rho = line[0], theta = line[1]
-		Point pt1, pt2
-		double a = cos(theta), b = sin(theta)
-		double x0 = a * rho, y0 = b * rho
-		pt1.x = cvRound(x0 + 1000 * (-b))
-		pt1.y = cvRound(y0 + 1000 * (a))
-		pt2.x = cvRound(x0 - 1000 * (-b))
-		pt2.y = cvRound(y0 - 1000 * (a))
-		cv2.line(imgParm1, pt1, pt2, Scalar(255, 255, 255), anchoLinea, LINE_AA)
-		cv2.line(imgHough1, pt1, pt2, Scalar(0, 0, 255), anchoLinea, LINE_AA)
+		rho = line[0]
+		theta = line[1]
+		a = math.cos(theta)
+		b = math.sin(theta)
+		x0 = a * rho
+		y0 = b * rho
+		pt1 = (cv2.cvRound(x0 + 1000 * (-b)), cv2.cvRound(y0 + 1000 * (a)))
+		pt2 = (cv2.cvRound(x0 - 1000 * (-b)), cv2.cvRound(y0 - 1000 * (a)))
+		cv2.line(imgParm1, pt1, pt2, (255, 255, 255), anchoLinea, cv2.LINE_AA)
+		cv2.line(imgHough1, pt1, pt2, (0, 0, 255), anchoLinea, cv2.LINE_AA)
 
-	cv2.line(imgParm2, Point(0, 0), Point(imgParm2.cols - 1, 0), Scalar(255, 255, 255), anchoLinea, LINE_AA)
-	cv2.line(imgParm2, Point(0, 0), Point(0, imgParm2.rows - 1), Scalar(255, 255, 255), anchoLinea, LINE_AA)
-	cv2.line(imgParm2, Point(imgParm2.cols-1, 0), Point(imgParm2.cols - 1, imgParm2.rows - 1), Scalar(255, 255, 255), anchoLinea, LINE_AA)
-	cv2.line(imgParm2, Point(0, imgParm2.rows - 1), Point(imgParm2.cols - 1, imgParm2.rows - 1), Scalar(255, 255, 255), anchoLinea, LINE_AA)
+	cv2.line(imgParm2, (0, 0), (imgParm2.cols - 1, 0), (255, 255, 255), anchoLinea, cv2.LINE_AA)
+	cv2.line(imgParm2, (0, 0), (0, imgParm2.rows - 1), (255, 255, 255), anchoLinea, cv2.LINE_AA)
+	cv2.line(imgParm2, (imgParm2.cols-1, 0), (imgParm2.cols - 1, imgParm2.rows - 1), cv2.Scalar(255, 255, 255), anchoLinea, cv2.LINE_AA)
+	cv2.line(imgParm2, (0, imgParm2.rows - 1), (imgParm2.cols - 1, imgParm2.rows - 1), cv2.Scalar(255, 255, 255), anchoLinea, cv2.LINE_AA)
 	for line in linesP:
-		cv2.line(imgParm2, Point(line[0], line[1]), Point(line[2], line[3]), Scalar(255, 255, 255), anchoLinea, LINE_AA)
-		cv2.line(imgHough2, Point(line[0], line[1]), Point(line[2], line[3]), Scalar(0, 0, 255), anchoLinea, LINE_AA)
+		cv2.line(imgParm2, (line[0], line[1]), (line[2], line[3]), (255, 255, 255), anchoLinea, cv2.LINE_AA)
+		cv2.line(imgHough2, (line[0], line[1]), (line[2], line[3]), (0, 0, 255), anchoLinea, cv2.LINE_AA)
 
 	aux1 = cv2.cvtColor(imgParm1, cv2.COLOR_BGR2GRAY)
 	aux2 = cv2.cvtColor(imgParm2, cv2.COLOR_BGR2GRAY)
@@ -179,45 +186,38 @@ def GetHoughParameters(imgParm, imgParm1, imgParm2):
 	return imgParm1, imgParm2
 
 def GetPlantillaFromLineasRojas(imgLineasRojas):
-
-	vector<vector<Point>> contornos
-	vector<Vec4i> jerarquia
-
 	CannyLineasRojas = cv2.Canny(imgLineasRojas, 50, 200, 3)
 
-	cv2.findContours(CannyLineasRojas, contornos, jerarquia, RETR_LIST, CHAIN_APPROX_SIMPLE)
-	vector<vector<Point>> conPoly(contornos.size())
-	vector<Rect> boundRect(contornos.size())
+	CannyLineasRojas, contornos, jerarquia = cv2.findContours(CannyLineasRojas, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+	conPoly = []
+	boundRect = []
 
 	for i, contorno in enumerate(contornos):
-		float peri = arcLength(contorno, True)
+		peri = cv2.arcLength(contorno, True)
 
 		#Esta funcion cuenta la cantidad de vertices que encuentra en cada forma
-		cv2.approxPolyDP(contorno, conPoly[i], 0.02 * peri, True)
-		boundRect[i] = boundingRect(conPoly[i])
+		conPoly.append(cv2.approxPolyDP(contorno, 0.02 * peri, True))
+		boundRect.append(cv2.boundingRect(conPoly[i]))
 
 	contornoMayor = getContornoMayor(conPoly)
-	Point2f centroImg(imgLineasRojas.cols, imgLineasRojas.rows)
 
 	#SE ASUME QUE EL CONTORNO DE MAYOR AREA ES EL CORRECTO
 	#MAS ADELANTE PODRÍA ASEGURARSE MEJOR A PARTIR DE VERIFICAR SI TOCA EL PUNTO CENTRAL Y ATENDER SI NO LLEGA A SER EL CASO
-	cv2.drawContours(plantillaBebederoReducida, contornoMayor, -1, Scalar(255, 255, 255), FILLED)
+	cv2.drawContours(plantillaBebederoReducida, contornoMayor, -1, (255, 255, 255), cv2.FILLED)
 
 	return plantillaBebederoReducida
 
 
-def getRectanguloInternoMaximo(Mat plantilla):
+def getRectanguloInternoMaximo(plantilla):
 
 	plantillaCanny = cv2.Canny(plantilla, 50, 200, 3)
 
-	cv2.findContours(plantillaCanny, contornos, jerarquia, RETR_EXTERNAL, CHAIN_APPROX_NONE)
+	plantillaCanny, contornos, jerarquia = cv2.findContours(plantillaCanny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
 	#Se asume que hay un solo contorno
 	contorno = contornos[0]
 
 	posiblesRectangulos = []
-	int x1, x2, y1, y2
-	int area
 
 	#Se listan todos los posibles rectangulos
 	for i in contorno:
@@ -227,7 +227,7 @@ def getRectanguloInternoMaximo(Mat plantilla):
 			x2 = j.x
 			y2 = j.y
 			area = abs(y2 - y1) * abs(x2 - x1)
-			posiblesRectangulos.append([Point(x1,y1), Point(x2,y2), area])
+			posiblesRectangulos.append([[x1,y1], [x2,y2], area])
 
 	#Se ordenan los rectangulos por tamaño
 	posiblesRectangulosOrdenados = sorted(posiblesRectangulos, key=lambda rect: rect[2], reverse=True)
@@ -252,12 +252,12 @@ def getRectanguloInternoMaximo(Mat plantilla):
 		y = yMin = min(y1, y2) + 1
 
 		while (rectaValida and x < xMax):
-			if (plantilla.at<uchar>(yMin, x) == 0 or plantilla.at<uchar>(yMax, x) == 0):
+			if (plantilla[yMin, x] == 0 or plantilla[yMax, x] == 0):
 				rectaValida = False
 			x+= 1
 		
 		while (rectaValida and y < yMax):
-			if (plantilla.at<uchar>(y, xMin) == 0 or plantilla.at<uchar>(y, xMax) == 0):
+			if (plantilla[y, xMin] == 0 or plantilla[y, xMax] == 0):
 				rectaValida = False
 			
 			y+= 1
@@ -313,15 +313,16 @@ if(img.cols > img.rows):
 	anchoNuevo = 400
 	altoNuevo = 0
 else:
-	img.rows
+	ladoMasExtenso = img.rows
 	altoNuevo = 400
 	anchoNuevo = 0
+
 porcentajeReduccion = 400.0 / ladoMasExtenso
+
 if(altoNuevo == 0):
 	altoNuevo = alto * porcentajeReduccion
 else:
 	anchoNuevo = ancho * porcentajeReduccion
-
 
 imgReducida = cv2.resize(img, (anchoNuevo,altoNuevo), cv2.INTER_LINEAR)
 plantillaBebederoReducida = cv2.resize(plantillaBebedero, (anchoNuevo,altoNuevo), cv2.INTER_LINEAR)
