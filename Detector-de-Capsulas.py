@@ -4,6 +4,8 @@ import numpy as np
 #Asignación de variables globales
 path = "/home/pi/Desktop/Tesis/Resources/VideoYFotogramas/Vid_10_1.jpg"#"/home/pi/Desktop/Tesis/Resources/Prueba7.jpg" #"/home/pi/Desktop/Tesis/Resources/Prueba1.jpg" #
 
+alto = 0
+ancho = 0
 umbralGris = 20
 umbralMin = 157
 umbraMax = 255
@@ -13,10 +15,13 @@ anchoView = 15
 altoView = 15
 
 def loadValores():
-	img = cv2.imread(path)
+	global img
+	img= cv2.imread(path)
+	global imgTest
 	imgTest = cv2.imread(path)
 	ancho = img.cols
 	alto = img.rows
+	global plantillaBebedero
 	plantillaBebedero = np.full((alto,ancho), [255,255,255])
 
 def dentroBebedero(plantilla, x, y):
@@ -46,27 +51,27 @@ def getContornoMayor(contornos):
 	return contornoMayor
 
 def GetCuadrantesCubiertos(mitadX, mitadY, line):
-	cuadrantes = [false, false, false, false]
+	cuadrantes = [False, False, False, False]
 	if (line[0] < mitadX):
 		if (line[1] < mitadY):
-			cuadrantes[1] = true
+			cuadrantes[1] = True
 		else:
-			cuadrantes[2] = true
+			cuadrantes[2] = True
 	else:
 		if (line[1] < mitadY):
-			cuadrantes[0] = true
+			cuadrantes[0] = True
 		else:
-			cuadrantes[3] = true
+			cuadrantes[3] = True
 	if (line[2] < mitadX):
 		if (line[3] < mitadY):
-			cuadrantes[1] = true
+			cuadrantes[1] = True
 		else:
-			cuadrantes[2] = true
+			cuadrantes[2] = True
 	else:
 		if (line[3] < mitadY):
-			cuadrantes[0] = true
+			cuadrantes[0] = True
 		else:
-			cuadrantes[3] = true
+			cuadrantes[3] = True
 	count = 0
 	for cuadrante in cuadrantes:
 		if cuadrante:
@@ -77,13 +82,13 @@ def GetCuadrantesCubiertos(mitadX, mitadY, line):
 def CheckIfExisteEn(arr, valoresARevisar):
 	for i, arrVal in enumerate(arr):
 		if (arrVal == valoresARevisar[i]):
-			return true
+			return True
 	
-	return false
+	return False
 
 def GetIfDosLineasCubrenCadaCuadrante(lines, mitadX, mitadY):
-	cuadrantes1 = [ false, false, false, false ]
-	cuadrantes2 = [ false, false, false, false ]
+	cuadrantes1 = [ False, False, False, False ]
+	cuadrantes2 = [ False, False, False, False ]
 	
 	i = 0
 	while(i < lines.size()):
@@ -92,21 +97,21 @@ def GetIfDosLineasCubrenCadaCuadrante(lines, mitadX, mitadY):
 			j = i + 1
 			while(j < lines.size()):
 				cantCuadrantes2, cuadrantes2 = GetCuadrantesCubiertos(mitadX, mitadY, lines[j])
-				if (cantCuadrantes2 == 2 and !CheckIfExisteEn(cuadrantes1, cuadrantes2)):
-					return true
+				if (cantCuadrantes2 == 2 and not CheckIfExisteEn(cuadrantes1, cuadrantes2)):
+					return True
 				for k in [0,1,2,3]:
-					cuadrantes2[k] = false
+					cuadrantes2[k] = False
 		for k in [0,1,2,3]:
-			cuadrantes1[k] = false
+			cuadrantes1[k] = False
 	
-	return false
+	return False
 
 def GetHoughParameters(imgParm, imgParm1, imgParm2):
-	aux1 = cv2.GaussianBlur(imgParm, Size(7, 7), 0)
+	aux1 = cv2.GaussianBlur(imgParm, (7, 7), 0)
 	
 	# Edge detection
-	Mat imgHough1 = imgParm.clone()
-	Mat imgHough2 = imgParm.clone()
+	imgHough1 = imgParm.clone()
+	imgHough2 = imgParm.clone()
 
 	imgCanny = cv2.Canny(aux1, 50, 200, 3)#Canny(aux1, imgCanny, 230, 255, 3)
 
@@ -116,25 +121,24 @@ def GetHoughParameters(imgParm, imgParm1, imgParm2):
 	auxMax = 256
 	minLineLength = imgParm.cols < imgParm.rows? imgParm.cols*0.65 : imgParm.rows * 0.65	#Se asume que el bebedero ocupará un 65% del largo o ancho de la imagen
 	maxLineGap = imgParm.cols < imgParm.rows ? imgParm.cols * 0.10 : imgParm.rows * 0.10
-	mitadX = imgParm.cols/2, mitadY = imgParm.rows / 2
+	mitadX = imgParm.cols/2
+	mitadY = imgParm.rows / 2
 
-	vector<Vec2f> lines
-	vector<Vec4f> linesP
-	cv2.HoughLinesP(imgCanny, linesP, 1, CV_PI / 180, maxThreshold, minLineLength, maxLineGap)
+	cv2.HoughLinesP(imgCanny, linesP, 1, cv2.CV_PI / 180, maxThreshold, minLineLength, maxLineGap)
 
 	#Se halla el valor máximo de threshold que brinde suficientes resultados (al menos una linea cruzando dos cuadrantes, para ambos duos de cuadrantes)
 	step = 128
 	if (linesP.size() == 0):
 		while (step > 10):
-			if (linesP.size() < 4 or !GetIfDosLineasCubrenCadaCuadrante(linesP, mitadX, mitadY)):
+			if (linesP.size() < 4 or not GetIfDosLineasCubrenCadaCuadrante(linesP, mitadX, mitadY)):
 				maxThreshold = maxThreshold - step
 			else:
 				#Posible máximo threshold
 				auxMax = maxThreshold
 				maxThreshold = maxThreshold + step
 			step = step / 2
-			if(step > 10)
-				cv2.HoughLinesP(imgCanny, linesP, 1, CV_PI / 180, maxThreshold, minLineLength, maxLineGap)
+			if(step > 10):
+				cv2.HoughLinesP(imgCanny, linesP, 1, cv2.CV_PI / 180, maxThreshold, minLineLength, maxLineGap)
 	
 	maxThreshold = auxMax
 
@@ -186,10 +190,10 @@ def GetPlantillaFromLineasRojas(imgLineasRojas):
 	vector<Rect> boundRect(contornos.size())
 
 	for i, contorno in enumerate(contornos):
-		float peri = arcLength(contorno, true)
+		float peri = arcLength(contorno, True)
 
 		#Esta funcion cuenta la cantidad de vertices que encuentra en cada forma
-		cv2.approxPolyDP(contorno, conPoly[i], 0.02 * peri, true)
+		cv2.approxPolyDP(contorno, conPoly[i], 0.02 * peri, True)
 		boundRect[i] = boundingRect(conPoly[i])
 
 	contornoMayor = getContornoMayor(conPoly)
@@ -229,19 +233,19 @@ def getRectanguloInternoMaximo(Mat plantilla):
 	posiblesRectangulosOrdenados = sorted(posiblesRectangulos, key=lambda rect: rect[2], reverse=True)
 	
 	#Se elije el primero que no tenga contacto con negro
-	mejorRectEncontrada = false
-	rectaValida = false
+	mejorRectEncontrada = False
+	rectaValida = False
 	i = 0
 	cantRect = posiblesRectangulos.size()
 	rect = posiblesRectangulos[0]
-	while (!mejorRectEncontrada and i < cantRect):
+	while (not mejorRectEncontrada and i < cantRect):
 		rect = posiblesRectangulos[i]
 		x1 = rect[0][0]
 		y1 = rect[0][1]
 		x2 = rect[1][0]
 		y2 = rect[1][1]
 
-		rectaValida = true
+		rectaValida = True
 		xMax = max(x1, x2) - 1
 		x = xMin = min(x1, x2) + 1
 		yMax = max(y1, y2) - 1
@@ -249,17 +253,17 @@ def getRectanguloInternoMaximo(Mat plantilla):
 
 		while (rectaValida and x < xMax):
 			if (plantilla.at<uchar>(yMin, x) == 0 or plantilla.at<uchar>(yMax, x) == 0):
-				rectaValida = false
+				rectaValida = False
 			x+= 1
 		
 		while (rectaValida and y < yMax):
 			if (plantilla.at<uchar>(y, xMin) == 0 or plantilla.at<uchar>(y, xMax) == 0):
-				rectaValida = false
+				rectaValida = False
 			
 			y+= 1
 		
 		if (rectaValida):
-			mejorRectEncontrada = true
+			mejorRectEncontrada = True
 		else:
 			i+= 1
 	
@@ -267,12 +271,12 @@ def getRectanguloInternoMaximo(Mat plantilla):
 
 def getGaborResults(imgParm):
 	#Parametros de Gabor
-	theetaArr[] = [1,3]
-	sigmaArr[] = [ 1,3,5 ]
-	lambdaArr[] = [ CV_PI / 4 ]
-	gammaArr[] = [ 0.5 ]
-	ktype = CV_64F
-	ksize = Size(11, 11)
+	theetaArr = [1,3]
+	sigmaArr = [ 1,3,5 ]
+	lambdaArr = [ cv2.CV_PI / 4 ]
+	gammaArr = [ 0.5 ]
+	ktype = cv2.CV_64F
+	ksize = (11, 11)
 	psi = 0
 
 	#Inicializaciones extra
@@ -284,12 +288,12 @@ def getGaborResults(imgParm):
 	#Intentos
 	for theeta in theetaArr:
 		for sigma in sigmaArr:
-			for lambda in lambdaArr:
+			for lambdaVal in lambdaArr:
 				for gamma in gammaArr:
-					kernel = cv2.getGaborKernel(ksize, sigma, theeta, lambda, gamma, psi, ktype)
+					kernel = cv2.getGaborKernel(ksize, sigma, theeta, lambdaVal, gamma, psi, ktype)
 					
-					filter2D(imgParmGris, capsulas, CV_8UC3, kernel)
-					nombre = "/home/pi/Desktop/Tesis/Resources/GaborResults/Gabor" + to_string(theeta) + "-" + to_string(sigma) + "-" + to_string(lambda) + "-" + to_string(gamma) + ".png"
+					capsulas = cv2.filter2D(imgParmGris, cv2.CV_8UC3, kernel)
+					nombre = "/home/pi/Desktop/Tesis/Resources/GaborResults/Gabor" + theeta + "-" + sigma + "-" + lambdaVal + "-" + gamma + ".png"
 					cv2.imwrite(nombre, capsulas)
 
 					#bitwise_or(result, capsulas, result)
@@ -304,11 +308,23 @@ def getGaborResults(imgParm):
 loadValores()
 
 #Se reduce proporcionalmente la imagen para que su lado más extenso tenga 400 pixeles
-ladoMasExtenso = img.cols > img.rows ? img.cols : img.rows
+if(img.cols > img.rows):
+	ladoMasExtenso = img.cols
+	anchoNuevo = 400
+	altoNuevo = 0
+else:
+	img.rows
+	altoNuevo = 400
+	anchoNuevo = 0
 porcentajeReduccion = 400.0 / ladoMasExtenso
+if(altoNuevo == 0):
+	altoNuevo = alto * porcentajeReduccion
+else:
+	anchoNuevo = ancho * porcentajeReduccion
 
-imgReducida = cv2.resize(img, null, porcentajeReduccion, porcentajeReduccion, cv2.INTER_LINEAR)
-plantillaBebederoReducida = cv2.resize(plantillaBebedero, null, porcentajeReduccion, porcentajeReduccion, cv2.INTER_LINEAR)
+
+imgReducida = cv2.resize(img, (anchoNuevo,altoNuevo), cv2.INTER_LINEAR)
+plantillaBebederoReducida = cv2.resize(plantillaBebedero, (anchoNuevo,altoNuevo), cv2.INTER_LINEAR)
 
 imgHough = cv2.Mat(imgReducida.rows, imgReducida.cols, cv2.CV_8UC3, [0, 0, 0])
 imgHoughP = cv2.Mat(imgReducida.rows, imgReducida.cols, cv2.CV_8UC3, [0, 0, 0])
@@ -320,10 +336,10 @@ imgHough, imgHoughP = GetHoughParameters(imgReducida, imgHough, imgHoughP)
 plantillaBebederoReducida = GetPlantillaFromLineasRojas(imgHough)
 
 #Una vez obtenida la plantilla, se ajusta al tamaño de la imagen original
-plantillaBebedero = cv2.resize(plantillaBebederoReducida, [ancho, alto])
+plantillaBebedero = cv2.resize(plantillaBebederoReducida, (ancho, alto))
 
 plantillaBebedero = cv2.cvtColor(plantillaBebedero, cv2.COLOR_BGR2GRAY)
-retval, plantillaBebedero = threshold(plantillaBebedero, 100, 255, cv2.THRESH_BINARY)
+retval, plantillaBebedero = cv2.threshold(plantillaBebedero, 100, 255, cv2.THRESH_BINARY)
 
 #Se obtiene el rectangulo más grande capaz de contenerse dentro de la forma del bebedero
 rectMaxPlantilla = getRectanguloInternoMaximo(plantillaBebedero)
@@ -334,9 +350,9 @@ cv2.waitKey(0)
 
 xMin = min(rectMaxPlantilla[0].x, rectMaxPlantilla[1].x)
 yMin = min(rectMaxPlantilla[0].y, rectMaxPlantilla[1].y)
-anchoRect = abs(rectMaxPlantilla[1].x - rectMaxPlantilla[0].x)
-altoRect = abs(rectMaxPlantilla[1].y - rectMaxPlantilla[0].y)
-rectMaxBebedero = img(cv::Rect(xMin, yMin, anchoRect, altoRect)).clone()
+xMax = max(rectMaxPlantilla[0].x, rectMaxPlantilla[1].x)
+yMax = max(rectMaxPlantilla[0].y, rectMaxPlantilla[1].y)
+rectMaxBebedero = cv2.rectangle(img, (xMin,yMin), (xMax,yMax), (255,255,255), -1)
 Capsulas = getGaborResults(rectMaxBebedero)
 elemKerelErode = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 
@@ -346,8 +362,6 @@ cv2.waitKey(0)
 
 cv2.imwrite("/home/pi/Desktop/Tesis/Resources/GaborResults/ResultadoDilatacion.png", CapsulasBlur)
 
-float porcentajeCapsulas = getPorcentajeCapsulas(CapsulasBlur, 125)
+porcentajeCapsulas = getPorcentajeCapsulas(CapsulasBlur, 125)
 
-cout << "Porcentaje de cápsulas:" << porcentajeCapsulas << endl
-
-return 0
+print("Porcentaje de cápsulas:" + porcentajeCapsulas)
