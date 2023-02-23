@@ -1,9 +1,11 @@
 import cv2
 import numpy as np
 import math
+from picamera import PiCamera
 
 #Asignación de variables globales
-path = "/home/pi/Desktop/Tesis/Resources/Prueba1.jpg" #"/home/pi/Desktop/Tesis/Resources/Vid_10_1.jpg"#'/home/pi/Desktop/Tesis/Resources/CajaBlanca.jpeg'#"/home/pi/Desktop/Tesis/Resources/Prueba7.jpg" #
+path = "/home/pi/Desktop/Tesis/Resources/Prueba7.jpg" #"/home/pi/Desktop/Tesis/Resources/Vid_10_1.jpg"##"/home/pi/Desktop/Tesis/Resources/Prueba1.jpg" #'/home/pi/Desktop/Tesis/Resources/CajaBlanca.jpeg'#
+pathCameraFoto = "/home/pi/Desktop/Tesis/Resources/foto.jpg"
 
 global alto
 alto = 0
@@ -11,12 +13,17 @@ global ancho
 ancho = 0
 global anchoLinea
 anchoLinea = 3
+global camera
+camera = PiCamera()
 
 def loadValores():
+	camera.capture(pathCameraFoto)
 	global img
-	img= cv2.imread(path)
+	img= cv2.imread(pathCameraFoto)
+	#img = cv2.imread("/home/pi/Desktop/foto2.jpg")
 	global imgTest
-	imgTest = cv2.imread(path)
+	imgTest = cv2.imread(pathCameraFoto)
+	#imgTest = cv2.imread("/home/pi/Desktop/foto2.jpg")
 	global alto
 	global ancho
 	alto, ancho, _ = img.shape
@@ -117,10 +124,10 @@ def GetHoughParameters(imgParm, imgParm1, imgParm2):
 	aux1 = cv2.GaussianBlur(imgParm, (7, 7), 0)
 	
 	# Edge detection
-	imgHough1 = np.copy(imgParm)#imgParm.clone()
-	imgHough2 = np.copy(imgParm)#imgParm.clone()
+	imgHough1 = np.copy(imgParm)
+	imgHough2 = np.copy(imgParm)
 
-	imgCanny = cv2.Canny(aux1, 50, 200, 3)#Canny(aux1, imgCanny, 230, 255, 3)
+	imgCanny = cv2.Canny(aux1, 50, 200, 3)
 	
 	#Seteo inicial de variables
 	threshold = 80
@@ -341,7 +348,44 @@ def getGaborResults(imgParm):
 
 	return result
 
+def deleteBarrelEffect(src):
+	distCoeff = np.zeros((4,1),np.float64)
+
+	# TODO: add your coefficients here!
+	k1 = -1.0e-5; # negative to remove barrel distortion
+	k2 = 0.0;
+	p1 = 0.0;
+	p2 = 0.0;
+
+	distCoeff[0,0] = k1;
+	distCoeff[1,0] = k2;
+	distCoeff[2,0] = p1;
+	distCoeff[3,0] = p2;
+
+	# assume unit matrix for camera
+	cam = np.eye(3,dtype=np.float32)
+
+	cam[0,2] = ancho/2.0  # define center x
+	cam[1,2] = alto/2.0 # define center y
+	cam[0,0] = 10.        # define focal length x
+	cam[1,1] = 10.        # define focal length y
+
+	# here the undistortion will be computed
+	dst = cv2.undistort(src,cam,distCoeff)
+	
+	return dst
+
 loadValores()
+
+cv2.imshow("foto", img)
+cv2.waitKey(0)
+
+img = deleteBarrelEffect(img)
+
+cv2.imshow("arreglado", img)
+cv2.waitKey(0)
+
+cv2.imwrite("/home/pi/Desktop/Foto2Arreglada.png", img)
 
 #Se reduce proporcionalmente la imagen para que su lado más extenso tenga 400 pixeles
 global ladoMasExtenso
@@ -368,8 +412,8 @@ plantillaBebederoReducida = cv2.resize(plantillaBebedero, (anchoNuevo,altoNuevo)
 cv2.imshow('imgReducida',imgReducida)
 cv2.waitKey(0)
 
-imgHough = np.zeros((altoNuevo,anchoNuevo,3))	#cv2.CreateMat(altoNuevo, anchoNuevo, cv2.CV_8UC3, [0, 0, 0]) 
-imgHoughP = np.zeros((altoNuevo,anchoNuevo,3))	#cv2.CreateMat(altoNuevo, anchoNuevo, cv2.CV_8UC3, [0, 0, 0])
+imgHough = np.zeros((altoNuevo,anchoNuevo,3))
+imgHoughP = np.zeros((altoNuevo,anchoNuevo,3))
 
 #Se busca los parámetros más apropiados para ejecutar Hough sobre la imagen para obtener el bebedero
 imgHough, imgHoughP = GetHoughParameters(imgReducida, imgHough, imgHoughP)
